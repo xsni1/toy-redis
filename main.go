@@ -5,12 +5,23 @@ import (
 	"net"
 	"slices"
 	"strconv"
+	"sync"
 )
 
-func parseCommand(elements []string) (string, error) {
+// map could be sharded to minimize time spent waiting for locks
+// or not? it could be sharded if we were to use simple map with hand-made locks
+var store = sync.Map{}
+
+func parseCommand(elements []string) (any, error) {
 	switch elements[0] {
 	case "SET":
+		store.Store(elements[1], elements[2])
+		return "OK", nil
 	case "GET":
+		if val, ok := store.Load(elements[1]); ok {
+			return val, nil
+		}
+		return "", fmt.Errorf("not found")
 	}
 	return "", fmt.Errorf("failure during command parsing")
 }
@@ -97,11 +108,11 @@ func handleConn(conn *net.TCPConn) {
 
 		fmt.Println("parsed: ", elements)
 		// parse command
-		_, err = parseCommand(elements)
+		res, err := parseCommand(elements)
 		if err != nil {
 			conn.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
 		} else {
-			conn.Write([]byte("$2\r\nOK\r\n"))
+			conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
 		}
 
 		buffer = []byte{}
