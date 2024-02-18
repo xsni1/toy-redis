@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"slices"
 	"strconv"
@@ -45,37 +46,32 @@ func handleConn(conn *net.TCPConn) {
 		n, err := conn.Read(tempBuffer)
 		buffer = append(buffer, tempBuffer[:n]...)
 		if err != nil {
+			if err == io.EOF {
+				fmt.Printf("disconnecting client\n")
+				return
+			}
 			fmt.Printf("err reading msg: %v", err)
 			return
 		}
-		fmt.Printf("reading %d bytes, err: %v\n", n, err)
 
-		// parse command
 		if multiBulkLen == 0 {
 			// multi bulk
 			if buffer[0] == '*' {
 				numend := slices.Index(buffer, '\r')
 				if numend == -1 || len(buffer) <= numend+1 || (len(buffer) > numend+1 && buffer[numend+1] != '\n') {
-					// i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
 					continue
 				}
-				// num of elements
 				multiBulkLen, err = strconv.Atoi(string(buffer[1:numend]))
 				if err != nil {
 					fmt.Printf("err reading array len: %v\n", err)
 					return
 				}
-				fmt.Printf("multibulklen: %d\n", multiBulkLen)
 				// 2 to put pointer on the first byte after \n
-				// fmt.Println("buffer before: ", buffer)
 				buffer = buffer[numend+2:]
-				// cur = numend + 2
 			} else {
 				// inline
 			}
 		}
-
-		// fmt.Println("buffer after multibulklen: ", (buffer))
 
 		for multiBulkLen > 0 {
 			fmt.Println(buffer)
