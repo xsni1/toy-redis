@@ -42,14 +42,13 @@ func handleConn(conn *net.TCPConn) {
 	var (
 		// co jesli wiadomosc jest wieksza? ucinane czy porcjowane
 		tempBuffer   = make([]byte, 1024)
-		buffer       []byte
+		buffer       = []byte{}
 		elements     []string
 		multiBulkLen int
 	)
 
 	for {
 		n, err := conn.Read(tempBuffer)
-		buffer = append(buffer, tempBuffer[:n]...)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Printf("disconnecting client\n")
@@ -58,6 +57,7 @@ func handleConn(conn *net.TCPConn) {
 			fmt.Printf("err reading msg: %v", err)
 			return
 		}
+		buffer = append(buffer, tempBuffer[:n]...)
 
 		if multiBulkLen == 0 {
 			// Multi bulk - array of bulk strings
@@ -71,7 +71,6 @@ func handleConn(conn *net.TCPConn) {
 					fmt.Printf("err reading array len: %v\n", err)
 					return
 				}
-				// 2 to put pointer on the first byte after \n
 				buffer = buffer[newlineIdx+2:]
 			} else {
 				// inline
@@ -85,7 +84,6 @@ func handleConn(conn *net.TCPConn) {
 			}
 			newlineIdx := slices.Index(buffer, '\r')
 			if newlineIdx == -1 || len(buffer) <= newlineIdx+1 || (len(buffer) > newlineIdx+1 && buffer[newlineIdx+1] != '\n') {
-				// i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
 				break
 			}
 			strLen, err := strconv.Atoi(string(buffer[1:newlineIdx]))
@@ -99,15 +97,12 @@ func handleConn(conn *net.TCPConn) {
 			elements = append(elements, string(buffer[newlineIdx+2:newlineIdx+2+strLen]))
 			buffer = buffer[newlineIdx+2+strLen+2:]
 			multiBulkLen--
-			fmt.Println("parsed", elements)
 		}
 
 		if multiBulkLen > 0 {
 			continue
 		}
 
-		fmt.Println("parsed: ", elements)
-		// parse command
 		res, err := parseCommand(elements)
 		if err != nil {
 			conn.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
@@ -115,6 +110,7 @@ func handleConn(conn *net.TCPConn) {
 			conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
 		}
 
+		// could probably reuse existing slices
 		buffer = []byte{}
 		elements = []string{}
 	}
