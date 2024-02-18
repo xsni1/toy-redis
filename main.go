@@ -55,45 +55,44 @@ func handleConn(conn *net.TCPConn) {
 		}
 
 		if multiBulkLen == 0 {
-			// multi bulk
+			// Multi bulk - array of bulk strings
 			if buffer[0] == '*' {
-				numend := slices.Index(buffer, '\r')
-				if numend == -1 || len(buffer) <= numend+1 || (len(buffer) > numend+1 && buffer[numend+1] != '\n') {
+				newlineIdx := slices.Index(buffer, '\r')
+				if newlineIdx == -1 || len(buffer) <= newlineIdx+1 || (len(buffer) > newlineIdx+1 && buffer[newlineIdx+1] != '\n') {
 					continue
 				}
-				multiBulkLen, err = strconv.Atoi(string(buffer[1:numend]))
+				multiBulkLen, err = strconv.Atoi(string(buffer[1:newlineIdx]))
 				if err != nil {
 					fmt.Printf("err reading array len: %v\n", err)
 					return
 				}
 				// 2 to put pointer on the first byte after \n
-				buffer = buffer[numend+2:]
+				buffer = buffer[newlineIdx+2:]
 			} else {
 				// inline
 			}
 		}
 
 		for multiBulkLen > 0 {
-			fmt.Println(buffer)
 			if buffer[0] != '$' {
 				fmt.Print("err decoding, expected $\n")
 				return
 			}
-			numend := slices.Index(buffer, '\r')
-			if numend == -1 || len(buffer) <= numend+1 || (len(buffer) > numend+1 && buffer[numend+1] != '\n') {
+			newlineIdx := slices.Index(buffer, '\r')
+			if newlineIdx == -1 || len(buffer) <= newlineIdx+1 || (len(buffer) > newlineIdx+1 && buffer[newlineIdx+1] != '\n') {
 				// i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
 				break
 			}
-			strLen, err := strconv.Atoi(string(buffer[1:numend]))
+			strLen, err := strconv.Atoi(string(buffer[1:newlineIdx]))
 			if err != nil {
 				fmt.Printf("err reading element len: %v\n", err)
 				return
 			}
-			if len(buffer) <= numend+2+strLen {
+			if len(buffer) <= newlineIdx+2+strLen {
 				break
 			}
-			elements = append(elements, string(buffer[numend+2:numend+2+strLen]))
-			buffer = buffer[numend+2+strLen+2:]
+			elements = append(elements, string(buffer[newlineIdx+2:newlineIdx+2+strLen]))
+			buffer = buffer[newlineIdx+2+strLen+2:]
 			multiBulkLen--
 			fmt.Println("parsed", elements)
 		}
