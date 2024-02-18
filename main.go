@@ -23,6 +23,11 @@ func parseCommand(elements []string) (any, error) {
 			return val, nil
 		}
 		return "", fmt.Errorf("not found")
+	case "COMMAND":
+		if elements[1] == "DOCS" {
+			return "OK", nil
+		}
+		return "", fmt.Errorf("error parsing")
 	}
 	return "", fmt.Errorf("failure during command parsing")
 }
