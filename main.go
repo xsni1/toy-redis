@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"strconv"
 )
 
 func encode() {
@@ -18,46 +19,85 @@ func encode() {
 func handleConn(conn *net.TCPConn) {
 	defer conn.Close()
 	var (
-		buffer  []byte
-		cur     int
-		command string
+		// co jesli wiadomosc jest wieksza? ucinane czy porcjowane
+		tempBuffer   = make([]byte, 1024)
+		buffer       []byte
+		elements     []string
+		multiBulkLen int
 	)
 
 	for {
-		n, err := conn.Read(buffer)
+		n, err := conn.Read(tempBuffer)
+		buffer = append(buffer, tempBuffer...)
 		if err != nil {
 			fmt.Printf("err reading msg: %v", err)
 			return
 		}
 		fmt.Printf("reading %d bytes, err: %v\n", n, err)
 
+        // fmt.Println("buffer start: ", string(buffer))
+
 		// parse command
-		if cur == 0 {
+		if multiBulkLen == 0 {
 			// multi bulk
 			if buffer[0] == '*' {
 				numend := slices.Index(buffer, '\r')
 				if numend == -1 || len(buffer) <= numend+1 || (len(buffer) > numend+1 && buffer[numend+1] != '\n') {
-                    // i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
+					// i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
+					continue
 				}
+				// num of elements
+				multiBulkLen, err = strconv.Atoi(string(buffer[1:numend]))
+				if err != nil {
+					fmt.Printf("err reading array len: %v\n", err)
+					return
+				}
+				fmt.Printf("multibulklen: %d\n", multiBulkLen)
+				// 2 to put pointer on the first byte after \n
+                // fmt.Println("buffer before: ", buffer)
+				buffer = buffer[numend+2:]
+				// cur = numend + 2
 			} else {
 				// inline
 			}
 		}
-		// if readlen == 0 {
-		// 	switch msgtype := buffer[0]; msgtype {
-		// 	case '+':
 
-		// 	case ':':
-		// 	}
-		// }
-		// readlen += n
+		// fmt.Println("buffer after multibulklen: ", (buffer))
+
+		for multiBulkLen > 0 {
+			if buffer[0] != '$' {
+				fmt.Print("err decoding, expected $\n")
+				return
+			}
+			numend := slices.Index(buffer, '\r')
+			if numend == -1 || len(buffer) <= numend+1 || (len(buffer) > numend+1 && buffer[numend+1] != '\n') {
+				// i need two buffers, so in this cause i can just call continue, and the read will concat new data with old
+				break
+			}
+			strLen, err := strconv.Atoi(string(buffer[1:numend]))
+			if err != nil {
+				fmt.Printf("err reading element len: %v\n", err)
+				return
+			}
+			if len(buffer) <= numend+2+strLen {
+				break
+			}
+			elements = append(elements, string(buffer[numend+2:numend+2+strLen]))
+			buffer = buffer[numend+2+strLen+2:]
+            fmt.Println("for", multiBulkLen, buffer)
+			multiBulkLen--
+		}
+        
+        if multiBulkLen > 0 {
+            continue
+        }
+
+		fmt.Println("parsed: ", elements)
 	}
-
-	// conn.Write([]byte("asd"))
 }
 
 func main() {
-	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:3456")
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:6379")
 	if err != nil {
 		panic(err)
 	}
