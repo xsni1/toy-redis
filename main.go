@@ -7,8 +7,12 @@ import (
 	"strconv"
 )
 
-func encode() {
-
+func parseCommand(elements []string) (string, error) {
+	switch elements[0] {
+	case "SET":
+	case "GET":
+	}
+	return "", fmt.Errorf("failure during command parsing")
 }
 
 // when reading from tcp socket
@@ -34,8 +38,6 @@ func handleConn(conn *net.TCPConn) {
 			return
 		}
 		fmt.Printf("reading %d bytes, err: %v\n", n, err)
-
-		// fmt.Println("buffer start: ", string(buffer))
 
 		// parse command
 		if multiBulkLen == 0 {
@@ -94,6 +96,16 @@ func handleConn(conn *net.TCPConn) {
 		}
 
 		fmt.Println("parsed: ", elements)
+		// parse command
+		_, err = parseCommand(elements)
+		if err != nil {
+			conn.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
+		} else {
+			conn.Write([]byte("$2\r\nOK\r\n"))
+		}
+
+		buffer = []byte{}
+		elements = []string{}
 	}
 }
 
