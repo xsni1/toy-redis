@@ -28,14 +28,14 @@ func handleConn(conn *net.TCPConn) {
 
 	for {
 		n, err := conn.Read(tempBuffer)
-		buffer = append(buffer, tempBuffer...)
+		buffer = append(buffer, tempBuffer[:n]...)
 		if err != nil {
 			fmt.Printf("err reading msg: %v", err)
 			return
 		}
 		fmt.Printf("reading %d bytes, err: %v\n", n, err)
 
-        // fmt.Println("buffer start: ", string(buffer))
+		// fmt.Println("buffer start: ", string(buffer))
 
 		// parse command
 		if multiBulkLen == 0 {
@@ -54,7 +54,7 @@ func handleConn(conn *net.TCPConn) {
 				}
 				fmt.Printf("multibulklen: %d\n", multiBulkLen)
 				// 2 to put pointer on the first byte after \n
-                // fmt.Println("buffer before: ", buffer)
+				// fmt.Println("buffer before: ", buffer)
 				buffer = buffer[numend+2:]
 				// cur = numend + 2
 			} else {
@@ -65,6 +65,7 @@ func handleConn(conn *net.TCPConn) {
 		// fmt.Println("buffer after multibulklen: ", (buffer))
 
 		for multiBulkLen > 0 {
+			fmt.Println(buffer)
 			if buffer[0] != '$' {
 				fmt.Print("err decoding, expected $\n")
 				return
@@ -84,13 +85,13 @@ func handleConn(conn *net.TCPConn) {
 			}
 			elements = append(elements, string(buffer[numend+2:numend+2+strLen]))
 			buffer = buffer[numend+2+strLen+2:]
-            fmt.Println("for", multiBulkLen, buffer)
 			multiBulkLen--
+			fmt.Println("parsed", elements)
 		}
-        
-        if multiBulkLen > 0 {
-            continue
-        }
+
+		if multiBulkLen > 0 {
+			continue
+		}
 
 		fmt.Println("parsed: ", elements)
 	}
