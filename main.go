@@ -13,29 +13,39 @@ import (
 // or not? it could be sharded if we were to use simple map with hand-made locks
 var store = sync.Map{}
 
-func parseCommand(elements []string) (any, error) {
+// redis stores all the commands in json files
+func parseCommand(elements []string) (string, error) {
 	switch elements[0] {
 	case "SET":
 		store.Store(elements[1], elements[2])
-		return "OK", nil
+		return "+OK\r\n", nil
 	case "GET":
 		if val, ok := store.Load(elements[1]); ok {
-			return val, nil
+			return fmt.Sprintf("+%s\r\n", val), nil
 		}
 		return "", fmt.Errorf("not found")
 	case "COMMAND":
 		if elements[1] == "DOCS" {
-			return "OK", nil
+			return "+OK\r\n", nil
 		}
 		return "", fmt.Errorf("error parsing")
+	case "EXISTS":
+		var res int
+		for _, v := range elements[1:] {
+			if _, b := store.Load(v); b {
+				res++
+			}
+		}
+        return fmt.Sprintf(":%d\r\n", res), nil
 	}
+	// conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
 	return "", fmt.Errorf("failure during command parsing")
 }
 
 // when reading from tcp socket
 // we never know when to stop - unless client disconnects
 // this is why we need some kind of protocol - rules about the shape of the data - how it starts, ends etc.
-// but at the same time we have to treat tcp as a stream - so we have to keep reading it until we have our defined end
+// but at the same time we have to treat tcp as a stream - so we have to keep reading it until we have our defined by the protocl end of message
 // i think there should also be some kind of timeout so we aren't stuck reading forever (redis does not do it!!)
 func handleConn(conn *net.TCPConn) {
 	defer conn.Close()
@@ -107,7 +117,7 @@ func handleConn(conn *net.TCPConn) {
 		if err != nil {
 			conn.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
 		} else {
-			conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
+			conn.Write([]byte(res))
 		}
 
 		// could probably reuse existing slices
@@ -117,6 +127,10 @@ func handleConn(conn *net.TCPConn) {
 }
 
 func main() {
+	// f, _ := os.Create("toy-redis.prof")
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
+
 	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:6379")
 	if err != nil {
 		panic(err)
