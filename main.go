@@ -37,6 +37,14 @@ func parseCommand(elements []string) (string, error) {
 			}
 		}
         return fmt.Sprintf(":%d\r\n", res), nil
+    case "DEL":
+        var res int
+		for _, v := range elements[1:] {
+			if _, b := store.LoadAndDelete(v); b {
+				res++
+			}
+		}
+        return fmt.Sprintf(":%d\r\n", res), nil
 	}
 	// conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
 	return "", fmt.Errorf("failure during command parsing")
