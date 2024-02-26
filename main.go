@@ -36,15 +36,17 @@ func parseCommand(elements []string) (string, error) {
 				res++
 			}
 		}
-        return fmt.Sprintf(":%d\r\n", res), nil
-    case "DEL":
-        var res int
+		return fmt.Sprintf(":%d\r\n", res), nil
+	case "DEL":
+		var res int
 		for _, v := range elements[1:] {
 			if _, b := store.LoadAndDelete(v); b {
 				res++
 			}
 		}
-        return fmt.Sprintf(":%d\r\n", res), nil
+		return fmt.Sprintf(":%d\r\n", res), nil
+	case "INCR":
+
 	}
 	// conn.Write([]byte(fmt.Sprintf("+%s\r\n", res)))
 	return "", fmt.Errorf("failure during command parsing")
@@ -58,7 +60,6 @@ func parseCommand(elements []string) (string, error) {
 func handleConn(conn *net.TCPConn) {
 	defer conn.Close()
 	var (
-		// co jesli wiadomosc jest wieksza? ucinane czy porcjowane
 		tempBuffer   = make([]byte, 1024)
 		buffer       = []byte{}
 		elements     []string
@@ -69,10 +70,10 @@ func handleConn(conn *net.TCPConn) {
 		n, err := conn.Read(tempBuffer)
 		if err != nil {
 			if err == io.EOF {
-				fmt.Printf("disconnecting client\n")
+				fmt.Printf("disconnecting client...\n")
 				return
 			}
-			fmt.Printf("err reading msg: %v", err)
+			fmt.Printf("err reading msg: %v\ndisconnection client...\n", err)
 			return
 		}
 		buffer = append(buffer, tempBuffer[:n]...)
@@ -153,6 +154,7 @@ func main() {
 			fmt.Printf("err accepting: %v", err)
 			continue
 		}
+		// TODO: Alternate single-threaded version using epoll to mirror original redis implementation
 		go handleConn(conn)
 	}
 }
