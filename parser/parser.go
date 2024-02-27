@@ -2,8 +2,8 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"strings"
 )
 
 const (
@@ -23,9 +23,22 @@ const (
 	Push           byte = '>'
 )
 
+type IncompleteMessageError struct {
+	msg string
+}
+
+func (e IncompleteMessageError) Error() string {
+	return e.msg
+}
+
+type ParsedMessage struct {
+	msgtype byte
+	args    []string
+}
+
 // Structured this way to handle packets segmentation of IP protocol
-func Parse(in <-chan []byte) <-chan []string {
-	out := make(chan []string)
+func Parse(in <-chan []byte) <-chan ParsedMessage {
+	out := make(chan ParsedMessage)
 
 	go func() {
 		defer close(out)
@@ -44,7 +57,20 @@ func Parse(in <-chan []byte) <-chan []string {
 
 			switch dataType {
 			case SimpleString:
-				parseSimpleString(buf, n)
+				res, err, _ := parseSimpleString(buf, n)
+				if err != nil {
+					if errors.As(err, &IncompleteMessageError{}) {
+						continue
+					}
+					// TODO: Return error to the client
+					//       or return it to `out` channel?
+					fmt.Printf("err simple string parsing: %v", err)
+					return
+				}
+				out <- ParsedMessage{
+					msgtype: SimpleString,
+					args:    []string{res},
+				}
 			}
 		}
 		// out <- elements
@@ -53,19 +79,18 @@ func Parse(in <-chan []byte) <-chan []string {
 	return out
 }
 
-// moge zwracac n
-// n byloby dodawane w tej funkcji za kazdy sparsowany token
-func parseSimpleString(buf []byte, n int) (int, error) {
-	if len(buf) >= 2 && (buf[len(buf)-1] != '\n' || buf[len(buf)-2] != '\r') {
-		return 0, fmt.Errorf("Parse error - expected \\r\\n termination")
+func parseSimpleString(buf []byte, n int) (string, error, int) {
+	// Incomplete packet, wait for next segment
+	if len(buf[n:]) >= 2 && (buf[len(buf)-1] != '\n' || buf[len(buf)-2] != '\r') {
+		return "", IncompleteMessageError{msg: "Incomplete message"}, 0
 	}
 
 	idx := bytes.IndexByte(buf, '\r')
 	if idx != len(buf)-2 {
-		return 0, fmt.Errorf("Parse error - illegal character \\r or \\n")
+		return "", fmt.Errorf("Parse error - illegal character \\r or \\n"), 0
 	}
 
-	return 1, nil
+	return string(buf[n:idx]), nil, idx - n
 }
 
 func getMsgType(b byte) byte {

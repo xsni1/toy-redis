@@ -58,29 +58,30 @@ func parseCommand(elements []string) (string, error) {
 // i think there should also be some kind of timeout so we aren't stuck reading forever (redis does not do it!!)
 func handleConn(conn *net.TCPConn) {
 	defer conn.Close()
-    // TODO: check what's redis max message
-    buf := make([]byte, 4096)
+	// TODO: check what's redis max message
+	buf := make([]byte, 4096)
 
 	for {
-        // Could very well be simplified to not use goroutines at all
-        // but wanted to mess around
-        // TODO: move it all to `Parse` method?
+		// Could very well be simplified to not use goroutines at all
+		// but wanted to mess around
+		// TODO: move it all to `Parse` method?
 		in := make(chan []byte)
-        go func() {
-            for {
-                n, err := conn.Read(buf)
-                if err != nil {
-                    close(in)
-                    return
-                }
-                in <- buf[:n]
-            }
-        }()
+		go func() {
+			for {
+				n, err := conn.Read(buf)
+				if err != nil {
+					close(in)
+					return
+				}
+				in <- buf[:n]
+			}
+		}()
 
-        out := parser.Parse(in)
-        res := <- out
-        fmt.Println(res)
-        // execute cmd
+		out := parser.Parse(in)
+		res := <-out
+		close(in)
+		fmt.Println(res)
+		// execute cmd
 
 	}
 }
