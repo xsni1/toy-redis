@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 const (
@@ -34,6 +35,7 @@ func (e IncompleteMessageError) Error() string {
 type ParsedMessage struct {
 	msgtype byte
 	args    []string
+	error   error
 }
 
 // Structured this way to handle packets segmentation of IP protocol
@@ -46,6 +48,7 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 			dataType byte
 			buf      []byte
 			n        int
+			args     []string
 		)
 
 		for payload := range in {
@@ -62,21 +65,112 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 					if errors.As(err, &IncompleteMessageError{}) {
 						continue
 					}
-					// TODO: Return error to the client
-					//       or return it to `out` channel?
-					fmt.Printf("err simple string parsing: %v", err)
+					out <- ParsedMessage{
+						msgtype: SimpleString,
+						args:    []string{},
+						error:   fmt.Errorf("err simple string parsing: %w", err),
+					}
 					return
 				}
 				out <- ParsedMessage{
 					msgtype: SimpleString,
 					args:    []string{res},
 				}
+			case BulkString:
+				res, err, _ := parseBulkString(buf, n)
+				if err != nil {
+					if errors.As(err, &IncompleteMessageError{}) {
+						continue
+					}
+					out <- ParsedMessage{
+						msgtype: SimpleString,
+						args:    []string{},
+						error:   fmt.Errorf("err bulk string parsing: %w", err),
+					}
+					return
+				}
+				out <- ParsedMessage{
+					msgtype: Array,
+					args:    []string{res},
+				}
+
+			case Array:
+                fmt.Println("przed", n, string(buf[n]))
+				res, err, nn := parseArray(buf, n)
+				fmt.Println("po", res, err)
+				if err != nil {
+					if errors.As(err, &IncompleteMessageError{}) {
+						n = nn
+                        fmt.Println("incomplete", res, n)
+						args = append(args, res...)
+						continue
+					}
+					out <- ParsedMessage{
+						msgtype: SimpleString,
+						args:    []string{},
+						error:   fmt.Errorf("err array parsing: %w", err),
+					}
+					return
+				}
+				args = append(args, res...)
+				out <- ParsedMessage{
+					msgtype: Array,
+					args:    args,
+				}
 			}
 		}
-		// out <- elements
 	}()
 
 	return out
+}
+
+func parseBulkString(buf []byte, n int) (string, error, int) {
+	eol := bytes.IndexByte(buf[n:], '\n')
+	if buf[n+eol-1] != '\r' {
+		return "", fmt.Errorf("error bulk string protocol parsing: expected \\r\n"), 0
+	}
+	strLen, err := strconv.Atoi(string(buf[n : n+eol-1]))
+	if err != nil {
+		return "", fmt.Errorf("error bulk string protocol parsing: invalid length\n"), 0
+	}
+	if len(buf[n+eol:]) < strLen+2 {
+		return "", IncompleteMessageError{msg: "Incomplete message"}, 0
+	}
+	str := buf[n+eol+1 : n+strLen+eol+1]
+	if buf[n+eol+strLen+1] != '\r' || buf[n+eol+strLen+2] != '\n' {
+		return "", fmt.Errorf("error bulk string protocol parsing: expected \\r\\n\n"), 0
+	}
+	n += eol + strLen + 3
+	return string(str), nil, n
+}
+
+func parseArray(buf []byte, n int) ([]string, error, int) {
+	var res []string
+	eol := bytes.IndexByte(buf[n:], '\n')
+	if buf[n+eol-1] != '\r' {
+		return res, fmt.Errorf("error array protocol parsing: expected \\r\n"), 0
+	}
+	numOfEls, err := strconv.Atoi(string(buf[n : eol-1+n]))
+	if err != nil {
+		return res, fmt.Errorf("error array protocol parsing: invalid length\n"), 0
+	}
+	n += eol + 1
+	for i := 0; i < numOfEls; i++ {
+		switch buf[n] {
+		case BulkString:
+			n++
+			str, err, nn := parseBulkString(buf, n)
+			n = nn
+			if str != "" {
+				res = append(res, str)
+			}
+			if errors.As(err, &IncompleteMessageError{}) {
+				return res, err, n
+			}
+		}
+	}
+
+	return res, nil, n
 }
 
 func parseSimpleString(buf []byte, n int) (string, error, int) {

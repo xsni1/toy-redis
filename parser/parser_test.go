@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -15,9 +16,9 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-        if res.args[0] != "SIMPLESTRING" {
-            t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
-        }
+		if res.args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		}
 	})
 	t.Run("Simple string - segmented into multiple packets", func(t *testing.T) {
 		expect := "SIMPLESTRING"
@@ -29,11 +30,72 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-        if res.args[0] != "SIMPLESTRING" {
-            t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
-        }
+		if res.args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		}
+	})
+	t.Run("Bulk string - whole", func(t *testing.T) {
+		expect := "SIMPLESTRING"
+		in := make(chan []byte)
+		go func() {
+			in <- []byte("$12\r\nSIMPLESTRING\r\n")
+			close(in)
+		}()
+		out := Parse(in)
+		res := <-out
+		if res.args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		}
 	})
 
+	t.Run("Bulk string - segmented", func(t *testing.T) {
+		expect := "SIMPLESTRING"
+		in := make(chan []byte)
+		go func() {
+			in <- []byte("$12\r\nSIMPLEST")
+			in <- []byte("RING\r\n")
+			close(in)
+		}()
+		out := Parse(in)
+		res := <-out
+		if res.args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		}
+	})
+
+	t.Run("Array - whole", func(t *testing.T) {
+		expect := []string{"hello", "worl"}
+		in := make(chan []byte)
+		go func() {
+			in <- []byte("*2\r\n$5\r\nhello\r\n$4\r\nworl\r\n")
+			close(in)
+		}()
+		out := Parse(in)
+		res := <-out
+		for i, v := range expect {
+			if v != res.args[i] {
+				t.Errorf("expected: %v, got: %v\n", v, res.args[i])
+			}
+		}
+	})
+
+	t.Run("Array - segmented", func(t *testing.T) {
+		// expect := []string{"hello", "worl"}
+		in := make(chan []byte)
+		go func() {
+			in <- []byte("*2\r\n$5\r\nhello\r\n$4\r\nwo")
+			in <- []byte("rl\r\n")
+			close(in)
+		}()
+		out := Parse(in)
+		res := <-out
+        fmt.Println(res.args, res.error.Error())
+		// for i, v := range expect {
+		// 	if v != res.args[i] {
+                // t.Errorf("expected: %v, got: %v\nfull slice: %v\n", v, res.args[i], res.args)
+		// 	}
+		// }
+	})
 	// t.Run("Whole message delivered in single slice", func(t *testing.T) {
 	// 	expect := []string{"hello", "world"}
 	// 	in := make(chan []byte)
@@ -43,11 +105,11 @@ func TestParse(t *testing.T) {
 	// 	}()
 	// 	out := Parse(in)
 	// 	res := <-out
-        // for i, v := range expect {
-            // if v != res[i] {
-                // t.Errorf("expected: %v, got: %v", v, res[i])
-            // }
-        // }
+	// for i, v := range expect {
+	// if v != res[i] {
+	// t.Errorf("expected: %v, got: %v", v, res[i])
+	// }
+	// }
 	// })
 
 	// t.Run("Message partitioned into multiple slices", func(t *testing.T) {
@@ -60,11 +122,11 @@ func TestParse(t *testing.T) {
 	// 	}()
 	// 	out := Parse(in)
 	// 	res := <-out
-        // for i, v := range expect {
-            // if v != res[i] {
-                // t.Errorf("expected: %v, got: %v", v, res[i])
-            // }
-        // }
+	// for i, v := range expect {
+	// if v != res[i] {
+	// t.Errorf("expected: %v, got: %v", v, res[i])
+	// }
+	// }
 	// })
 
 	// t.Run("Message has invalid eol", func(t *testing.T) {
@@ -77,10 +139,10 @@ func TestParse(t *testing.T) {
 	// 	}()
 	// 	out := Parse(in)
 	// 	res := <-out
-        // for i, v := range expect {
-            // if v != res[i] {
-                // t.Errorf("expected: %v, got: %v", v, res[i])
-            // }
-        // }
+	// for i, v := range expect {
+	// if v != res[i] {
+	// t.Errorf("expected: %v, got: %v", v, res[i])
+	// }
+	// }
 	// })
 }
