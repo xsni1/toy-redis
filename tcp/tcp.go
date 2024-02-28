@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	Addr string
-	Host string
+	Port string
 }
 
 type Server struct {
@@ -60,7 +60,7 @@ func (s *Server) handleConn(conn *net.TCPConn) {
 }
 
 func (s *Server) ListenTCPSocket(config Config) {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%s", config.Addr, config.Host))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%s", config.Addr, config.Port))
 	if err != nil {
 		panic(err)
 	}
