@@ -5,11 +5,24 @@ import (
 	"net"
 
 	"github.com/xsni1/toy-redis/parser"
+	"github.com/xsni1/toy-redis/store"
 )
 
-type TCPConfig struct {
+type Config struct {
 	Addr string
 	Host string
+}
+
+type Server struct {
+	config Config
+	store  *store.Store
+}
+
+func NewServer(config Config, store *store.Store) Server {
+	return Server{
+		config: config,
+		store:  store,
+	}
 }
 
 // when reading from tcp socket
@@ -17,7 +30,7 @@ type TCPConfig struct {
 // this is why we need some kind of protocol - rules about the shape of the data - how it starts, ends etc.
 // but at the same time we have to treat tcp as a stream - so we have to keep reading it until we have our defined by the protocl end of message
 // i think there should also be some kind of timeout so we aren't stuck reading forever (redis does not do it!!)
-func handleConn(conn *net.TCPConn) {
+func (s *Server) handleConn(conn *net.TCPConn) {
 	defer conn.Close()
 	// TODO: check what's redis max message
 	buf := make([]byte, 4096)
@@ -46,7 +59,7 @@ func handleConn(conn *net.TCPConn) {
 	}
 }
 
-func ListenTCPSocket(config TCPConfig) {
+func (s *Server) ListenTCPSocket(config Config) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%s", config.Addr, config.Host))
 	if err != nil {
 		panic(err)
@@ -62,6 +75,6 @@ func ListenTCPSocket(config TCPConfig) {
 			continue
 		}
 		// TODO: Alternate single-threaded version using epoll to mirror original redis implementation
-		go handleConn(conn)
+		go s.handleConn(conn)
 	}
 }
