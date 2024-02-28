@@ -39,16 +39,17 @@ type ParsedMessage struct {
 }
 
 // Structured this way to handle packets segmentation of IP protocol
+// This thing would be soooo much easier if not segmenting
 func Parse(in <-chan []byte) <-chan ParsedMessage {
 	out := make(chan ParsedMessage)
 
 	go func() {
 		defer close(out)
 		var (
-			dataType byte
-			buf      []byte
-			n        int
-			args     []string
+			dataType     byte
+			buf          []byte
+			n            int
+			args         []string
 		)
 
 		for payload := range in {
@@ -95,13 +96,13 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 				}
 
 			case Array:
-                fmt.Println("przed", n, string(buf[n]))
+				fmt.Println("przed", n, string(buf[n]))
 				res, err, nn := parseArray(buf, n)
 				fmt.Println("po", res, err)
 				if err != nil {
 					if errors.As(err, &IncompleteMessageError{}) {
 						n = nn
-                        fmt.Println("incomplete", res, n)
+						fmt.Println("incomplete", res, n)
 						args = append(args, res...)
 						continue
 					}
@@ -134,7 +135,7 @@ func parseBulkString(buf []byte, n int) (string, error, int) {
 		return "", fmt.Errorf("error bulk string protocol parsing: invalid length\n"), 0
 	}
 	if len(buf[n+eol:]) < strLen+2 {
-		return "", IncompleteMessageError{msg: "Incomplete message"}, 0
+		return "", IncompleteMessageError{msg: "Incomplete message"}, n
 	}
 	str := buf[n+eol+1 : n+strLen+eol+1]
 	if buf[n+eol+strLen+1] != '\r' || buf[n+eol+strLen+2] != '\n' {

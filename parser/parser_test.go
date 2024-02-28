@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -79,55 +78,21 @@ func TestParse(t *testing.T) {
 		}
 	})
 
-	t.Run("Array - segmented", func(t *testing.T) {
-		// expect := []string{"hello", "worl"}
+	t.Run("Whole message delivered in single slice", func(t *testing.T) {
+		expect := []string{"hello", "world"}
 		in := make(chan []byte)
 		go func() {
-			in <- []byte("*2\r\n$5\r\nhello\r\n$4\r\nwo")
-			in <- []byte("rl\r\n")
+			in <- []byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n")
 			close(in)
 		}()
 		out := Parse(in)
 		res := <-out
-        fmt.Println(res.args, res.error.Error())
-		// for i, v := range expect {
-		// 	if v != res.args[i] {
-                // t.Errorf("expected: %v, got: %v\nfull slice: %v\n", v, res.args[i], res.args)
-		// 	}
-		// }
+		for i, v := range expect {
+			if v != res.args[i] {
+				t.Errorf("expected: %v, got: %v", v, res.args[i])
+			}
+		}
 	})
-	// t.Run("Whole message delivered in single slice", func(t *testing.T) {
-	// 	expect := []string{"hello", "world"}
-	// 	in := make(chan []byte)
-	// 	go func() {
-	// 		in <- []byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n")
-	// 		close(in)
-	// 	}()
-	// 	out := Parse(in)
-	// 	res := <-out
-	// for i, v := range expect {
-	// if v != res[i] {
-	// t.Errorf("expected: %v, got: %v", v, res[i])
-	// }
-	// }
-	// })
-
-	// t.Run("Message partitioned into multiple slices", func(t *testing.T) {
-	// 	expect := []string{"hello", "world"}
-	// 	in := make(chan []byte)
-	// 	go func() {
-	// 		in <- []byte("*2\r\n$5\r\nh")
-	// 		in <- []byte("ello\r\n$5\r\nworld\r\n")
-	// 		close(in)
-	// 	}()
-	// 	out := Parse(in)
-	// 	res := <-out
-	// for i, v := range expect {
-	// if v != res[i] {
-	// t.Errorf("expected: %v, got: %v", v, res[i])
-	// }
-	// }
-	// })
 
 	// t.Run("Message has invalid eol", func(t *testing.T) {
 	// 	expect := []string{"hello", "world"}
@@ -139,10 +104,10 @@ func TestParse(t *testing.T) {
 	// 	}()
 	// 	out := Parse(in)
 	// 	res := <-out
-	// for i, v := range expect {
-	// if v != res[i] {
-	// t.Errorf("expected: %v, got: %v", v, res[i])
-	// }
-	// }
+	// 	for i, v := range expect {
+	// 		if v != res.args[i] {
+	// 			t.Errorf("expected: %v, got: %v", v, res.args[i])
+	// 		}
+	// 	}
 	// })
 }
