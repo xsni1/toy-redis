@@ -12,6 +12,6 @@ type Store struct {
 	m sync.Map
 }
 
-func NewStore(config Config) Store {
-	return Store{}
+func NewStore(config Config) *Store {
+	return &Store{}
 }

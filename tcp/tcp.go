@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/xsni1/toy-redis/core"
 	"github.com/xsni1/toy-redis/parser"
 	"github.com/xsni1/toy-redis/store"
 )
@@ -16,12 +17,14 @@ type Config struct {
 type Server struct {
 	config Config
 	store  *store.Store
+	core   *core.Core
 }
 
-func NewServer(config Config, store *store.Store) Server {
+func NewServer(config Config, store *store.Store, core *core.Core) Server {
 	return Server{
 		config: config,
 		store:  store,
+		core:   core,
 	}
 }
 
@@ -54,8 +57,7 @@ func (s *Server) handleConn(conn *net.TCPConn) {
 		out := parser.Parse(in)
 		res := <-out
 		close(in)
-		fmt.Println(res)
-		// execute cmd
+		s.core.Execute(res)
 	}
 }
 

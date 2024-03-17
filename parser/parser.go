@@ -33,9 +33,9 @@ func (e IncompleteMessageError) Error() string {
 }
 
 type ParsedMessage struct {
-	msgtype byte
-	args    []string
-	error   error
+	Msgtype byte
+	Args    []string
+	Error   error
 }
 
 // Structured this way to handle packets segmentation of IP protocol
@@ -67,15 +67,15 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 						continue
 					}
 					out <- ParsedMessage{
-						msgtype: SimpleString,
-						args:    []string{},
-						error:   fmt.Errorf("err simple string parsing: %w", err),
+						Msgtype: SimpleString,
+						Args:    []string{},
+						Error:   fmt.Errorf("err simple string parsing: %w", err),
 					}
 					return
 				}
 				out <- ParsedMessage{
-					msgtype: SimpleString,
-					args:    []string{res},
+					Msgtype: SimpleString,
+					Args:    []string{res},
 				}
 			case BulkString:
 				res, err, _ := parseBulkString(buf, n)
@@ -84,15 +84,15 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 						continue
 					}
 					out <- ParsedMessage{
-						msgtype: SimpleString,
-						args:    []string{},
-						error:   fmt.Errorf("err bulk string parsing: %w", err),
+						Msgtype: SimpleString,
+						Args:    []string{},
+						Error:   fmt.Errorf("err bulk string parsing: %w", err),
 					}
 					return
 				}
 				out <- ParsedMessage{
-					msgtype: Array,
-					args:    []string{res},
+					Msgtype: Array,
+					Args:    []string{res},
 				}
 
 			case Array:
@@ -107,16 +107,16 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 						continue
 					}
 					out <- ParsedMessage{
-						msgtype: SimpleString,
-						args:    []string{},
-						error:   fmt.Errorf("err array parsing: %w", err),
+						Msgtype: SimpleString,
+						Args:    []string{},
+						Error:   fmt.Errorf("err array parsing: %w", err),
 					}
 					return
 				}
 				args = append(args, res...)
 				out <- ParsedMessage{
-					msgtype: Array,
-					args:    args,
+					Msgtype: Array,
+					Args:    args,
 				}
 			}
 		}

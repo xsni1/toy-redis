@@ -15,8 +15,8 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-		if res.args[0] != "SIMPLESTRING" {
-			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		if res.Args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.Args[0])
 		}
 	})
 	t.Run("Simple string - segmented into multiple packets", func(t *testing.T) {
@@ -29,8 +29,8 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-		if res.args[0] != "SIMPLESTRING" {
-			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		if res.Args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.Args[0])
 		}
 	})
 	t.Run("Bulk string - whole", func(t *testing.T) {
@@ -42,8 +42,8 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-		if res.args[0] != "SIMPLESTRING" {
-			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		if res.Args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.Args[0])
 		}
 	})
 
@@ -57,8 +57,8 @@ func TestParse(t *testing.T) {
 		}()
 		out := Parse(in)
 		res := <-out
-		if res.args[0] != "SIMPLESTRING" {
-			t.Errorf("expected: %v, got: %v\n", expect, res.args[0])
+		if res.Args[0] != "SIMPLESTRING" {
+			t.Errorf("expected: %v, got: %v\n", expect, res.Args[0])
 		}
 	})
 
@@ -72,8 +72,8 @@ func TestParse(t *testing.T) {
 		out := Parse(in)
 		res := <-out
 		for i, v := range expect {
-			if v != res.args[i] {
-				t.Errorf("expected: %v, got: %v\n", v, res.args[i])
+			if v != res.Args[i] {
+				t.Errorf("expected: %v, got: %v\n", v, res.Args[i])
 			}
 		}
 	})
@@ -88,8 +88,8 @@ func TestParse(t *testing.T) {
 		out := Parse(in)
 		res := <-out
 		for i, v := range expect {
-			if v != res.args[i] {
-				t.Errorf("expected: %v, got: %v", v, res.args[i])
+			if v != res.Args[i] {
+				t.Errorf("expected: %v, got: %v", v, res.Args[i])
 			}
 		}
 	})

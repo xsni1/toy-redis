@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/xsni1/toy-redis/core"
 	"github.com/xsni1/toy-redis/store"
 	"github.com/xsni1/toy-redis/tcp"
 )
@@ -24,11 +25,11 @@ var config = appConfig{
 		addr: "127.0.0.1",
 		port: "6379",
 	},
-    store: struct {
-        appendonly bool
-    }{
-        appendonly: true,
-    },
+	store: struct {
+		appendonly bool
+	}{
+		appendonly: true,
+	},
 }
 
 func main() {
@@ -40,7 +41,8 @@ func main() {
 		Appendonly: config.store.appendonly,
 	}
 	store := store.NewStore(storeConfig)
-	srv := tcp.NewServer(tcpConfig, &store)
+	core := core.NewCore(store)
+	srv := tcp.NewServer(tcpConfig, store, core)
 
 	srv.ListenTCPSocket(tcpConfig)
 }
