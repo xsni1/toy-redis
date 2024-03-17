@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/xsni1/toy-redis/parser"
 	"github.com/xsni1/toy-redis/store"
 )
@@ -15,4 +17,11 @@ func NewCore(store *store.Store) *Core {
 	}
 }
 
-func (c *Core) Execute(cmd parser.ParsedMessage) {}
+func (c *Core) Execute(cmd parser.ParsedMessage) {
+	if cmd.Msgtype != parser.Array {
+		fmt.Printf("wrong type\n")
+		return
+	}
+
+    fmt.Print("ARGS, ", cmd.Args, "\n")
+}

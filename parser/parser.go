@@ -46,13 +46,16 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 	go func() {
 		defer close(out)
 		var (
-			dataType     byte
-			buf          []byte
-			n            int
-			args         []string
+			dataType byte
+			buf      []byte
+			n        int
+			args     []string
 		)
+		fmt.Println("START PARSING", dataType, buf, n, args)
 
 		for payload := range in {
+			fmt.Println("range ", payload)
+			fmt.Println("START RANGE", dataType, buf, n, args)
 			buf = append(buf, payload...)
 			if dataType == 0 {
 				dataType = getMsgType(payload[0])
@@ -114,12 +117,20 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 					return
 				}
 				args = append(args, res...)
+				fmt.Println("out")
 				out <- ParsedMessage{
 					Msgtype: Array,
 					Args:    args,
 				}
+				fmt.Println("after out")
+                return
 			}
 		}
+
+		// dataType = 0
+		// buf = []byte{}
+		// n = 0
+		// args = []string{}
 	}()
 
 	return out
