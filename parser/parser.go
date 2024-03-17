@@ -51,11 +51,8 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 			n        int
 			args     []string
 		)
-		fmt.Println("START PARSING", dataType, buf, n, args)
 
 		for payload := range in {
-			fmt.Println("range ", payload)
-			fmt.Println("START RANGE", dataType, buf, n, args)
 			buf = append(buf, payload...)
 			if dataType == 0 {
 				dataType = getMsgType(payload[0])
@@ -99,13 +96,10 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 				}
 
 			case Array:
-				fmt.Println("przed", n, string(buf[n]))
 				res, err, nn := parseArray(buf, n)
-				fmt.Println("po", res, err)
 				if err != nil {
 					if errors.As(err, &IncompleteMessageError{}) {
 						n = nn
-						fmt.Println("incomplete", res, n)
 						args = append(args, res...)
 						continue
 					}
@@ -117,12 +111,10 @@ func Parse(in <-chan []byte) <-chan ParsedMessage {
 					return
 				}
 				args = append(args, res...)
-				fmt.Println("out")
 				out <- ParsedMessage{
 					Msgtype: Array,
 					Args:    args,
 				}
-				fmt.Println("after out")
                 return
 			}
 		}

@@ -35,34 +35,36 @@ func NewServer(config Config, store *store.Store, core *core.Core) Server {
 // i think there should also be some kind of timeout so we aren't stuck reading forever (redis does not do it!!)
 func (s *Server) handleConn(conn *net.TCPConn) {
 	defer conn.Close()
-    // Could very well be simplified to not use goroutines at all
-    // but wanted to mess around
-    // TODO: move it all to `Parse` method?
-    // TODO: check what's redis max message
+	// Could very well be simplified to not use goroutines at all
+	// but wanted to mess around
+	// TODO: move it all to `Parse` method?
+	// TODO: check what's redis max message
 
-    in := make(chan []byte)
+	in := make(chan []byte)
+	buf := make([]byte, 4096)
+	done := make(chan bool)
+	go func() {
+		for {
+			n, err := conn.Read(buf)
+			if err != nil {
+				close(in)
+				done <- true
+				break
+			}
+			in <- buf[:n]
+		}
+	}()
 
 	for {
-        buf := make([]byte, 4096)
-
-		go func() {
-			for {
-				n, err := conn.Read(buf)
-				if err != nil {
-					close(in)
-					return
-				}
-                fmt.Println("read", n, buf[:n])
-				in <- buf[:n]
-			}
-		}()
-
-		out := parser.Parse(in)
-		res := <-out
-        fmt.Println("end parsing", res)
-		s.core.Execute(res)
-		conn.Write([]byte("+OK\r\n"))
-        fmt.Println("@@@@@@@@@@@@@@@@@@@@")
+		select {
+		case <-done:
+			return
+		default:
+			out := parser.Parse(in)
+			res := <-out
+			s.core.Execute(res)
+			conn.Write([]byte("+OK\r\n"))
+		}
 	}
 }
 
