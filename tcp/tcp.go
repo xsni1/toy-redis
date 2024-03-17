@@ -62,8 +62,7 @@ func (s *Server) handleConn(conn *net.TCPConn) {
 		default:
 			out := parser.Parse(in)
 			res := <-out
-			s.core.Execute(res)
-			conn.Write([]byte("+OK\r\n"))
+			conn.Write(s.core.Execute(res))
 		}
 	}
 }

@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/xsni1/toy-redis/parser"
 	"github.com/xsni1/toy-redis/store"
@@ -17,11 +18,27 @@ func NewCore(store *store.Store) *Core {
 	}
 }
 
-func (c *Core) Execute(cmd parser.ParsedMessage) {
+func (c *Core) Execute(cmd parser.ParsedMessage) []byte {
 	if cmd.Msgtype != parser.Array {
-		fmt.Printf("wrong type\n")
-		return
+		return []byte{}
 	}
 
-    fmt.Print("ARGS, ", cmd.Args, "\n")
+	if len(cmd.Args) == 0 {
+		fmt.Printf("empty\n")
+		return []byte{}
+	}
+
+	switch strings.ToLower(cmd.Args[0]) {
+	case "set":
+		c.store.M.Store(cmd.Args[1], cmd.Args[2])
+		return parser.SimpleStringReply("OK")
+	case "get":
+		val, ok := c.store.M.Load(cmd.Args[1])
+		if !ok {
+			return parser.NullReply()
+		}
+		return parser.SimpleStringReply(val.(string))
+	}
+
+	return parser.NullReply()
 }
